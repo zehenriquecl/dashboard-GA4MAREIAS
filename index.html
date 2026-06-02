@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mareias Villas — GA4 Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap');
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ga:#E37400;--ga2:#F9AB00;
+  --bg:#0a0e1a;--card:#0f1423;
+  --border:rgba(227,116,0,0.18);--borderg:rgba(227,116,0,0.4);
+  --t1:#fff;--t2:#8892a4;--ta:#F9AB00;
+  --green:#00e5a0;--red:#ff4d6a;--blue:#3a86ff;--purple:#a855f7;--teal:#06d6a0;
+}
+html{background:var(--bg);min-height:100vh}
+body{
+  font-family:'Inter',sans-serif;color:var(--t1);
+  min-height:100vh;padding:16px 12px 60px;
+  background:var(--bg);
+  background-image:
+    radial-gradient(ellipse 800px 500px at 50% 0%,rgba(227,116,0,0.10) 0%,transparent 70%),
+    radial-gradient(ellipse 500px 350px at 100% 25%,rgba(249,171,0,0.05) 0%,transparent 60%);
+}
+/* LOADING */
+#ls{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;padding:20px;}
+.spin{width:48px;height:48px;border:3px solid rgba(227,116,0,0.2);border-top-color:var(--ga);border-radius:50%;animation:spin .9s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lt{font-size:14px;color:var(--t2);font-weight:500;text-align:center}
+.err{background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.3);border-radius:16px;padding:24px 20px;text-align:center;max-width:360px;width:100%;}
+.err .ei{font-size:28px;margin-bottom:8px}
+.err h3{font-size:14px;font-weight:700;color:var(--red);margin-bottom:6px}
+.err p{font-size:12px;color:var(--t2);line-height:1.7}
+.retry{margin-top:14px;padding:10px 24px;background:linear-gradient(135deg,var(--ga),var(--ga2));border:none;border-radius:100px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
+/* WRAPPER */
+.dash{position:relative;z-index:1;width:100%;max-width:1080px;margin:0 auto;}
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);position:relative;}
+.header::after{content:'';position:absolute;bottom:-1px;left:0;width:160px;height:2px;background:linear-gradient(90deg,var(--ga),transparent);}
+.hleft{display:flex;align-items:center;gap:14px}
+.ga-icon{width:54px;height:54px;min-width:54px;background:linear-gradient(135deg,var(--ga),var(--ga2));border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(227,116,0,.4);}
+.ga-icon svg{width:30px;height:30px}
+.htitle{font-family:'Montserrat',sans-serif;font-size:clamp(17px,4vw,26px);font-weight:900;letter-spacing:-0.5px;line-height:1.15;}
+.htitle span{color:var(--ga2)}
+.hsub{font-size:11px;color:var(--t2);margin-top:3px;letter-spacing:1.5px;text-transform:uppercase;font-weight:500;}
+.hright{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.lbadge{display:inline-flex;align-items:center;gap:7px;background:rgba(227,116,0,.12);border:1px solid var(--borderg);border-radius:100px;padding:5px 12px;font-size:11px;font-weight:600;color:var(--ta);}
+.ldot{width:6px;height:6px;background:var(--ga);border-radius:50%;box-shadow:0 0 6px var(--ga);animation:pulse 2s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.dinfo{font-size:11px;color:var(--t2)}
+/* SECTION LABEL */
+.slbl{font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--t2);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.slbl::before{content:'';width:3px;height:12px;min-width:3px;background:linear-gradient(180deg,var(--ga),transparent);border-radius:2px;}
+/* KPI GRID */
+.kgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+@media(min-width:480px){.kgrid{grid-template-columns:repeat(4,1fr)}}
+.mc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 14px;position:relative;overflow:hidden;}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:16px 16px 0 0;}
+.mc-a::before{background:linear-gradient(90deg,var(--ga),transparent)}
+.mc-b::before{background:linear-gradient(90deg,var(--blue),transparent)}
+.mc-g::before{background:linear-gradient(90deg,var(--green),transparent)}
+.mc-p::before{background:linear-gradient(90deg,var(--purple),transparent)}
+.mlbl{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--t2);margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mval{font-family:'Montserrat',sans-serif;font-size:clamp(24px,6vw,38px);font-weight:900;line-height:1;letter-spacing:-1.5px;margin-bottom:4px;}
+.mc-a .mval{color:var(--ga2)}
+.mc-b .mval{color:var(--blue)}
+.mc-g .mval{color:var(--green)}
+.mc-p .mval{color:var(--purple)}
+.msub{font-size:10px;color:var(--t2);line-height:1.4}
+.mbadge{display:inline-flex;align-items:center;font-size:9px;font-weight:600;padding:2px 8px;border-radius:100px;margin-top:6px;}
+.ba{background:rgba(227,116,0,.12);color:var(--ga2)}
+.bg{background:rgba(0,229,160,.12);color:var(--green)}
+.bb{background:rgba(58,134,255,.12);color:var(--blue)}
+.bp{background:rgba(168,85,247,.12);color:var(--purple)}
+/* CHART CARD */
+.cc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 16px 16px;margin-bottom:14px;position:relative;overflow:hidden;}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--ga),var(--ga2),transparent);border-radius:16px 16px 0 0;}
+.ch{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.ct{font-size:13px;font-weight:700;line-height:1.3}
+.ct small{font-size:10px;font-weight:400;color:var(--t2);display:block;margin-top:2px}
+.lgrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lgi{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);font-weight:500}
+.lgd{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+/* MAPA */
+.map-wrap{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:14px;position:relative;}
+.map-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),var(--blue),transparent);border-radius:16px 16px 0 0;z-index:10;}
+.map-header{padding:18px 16px 14px;border-bottom:1px solid var(--border);}
+.map-body{display:grid;grid-template-columns:1fr;}
+@media(min-width:640px){.map-body{grid-template-columns:1fr 300px}}
+#mapid{height:340px;width:100%;}
+.leaflet-container{background:#111827 !important}
+.leaflet-tile{filter:invert(1) hue-rotate(200deg) brightness(.6) saturate(.5);}
+.leaflet-popup-content-wrapper{background:var(--card);border:1px solid var(--borderg);color:var(--t1);border-radius:12px;}
+.leaflet-popup-tip{background:var(--card)}
+.leaflet-popup-content{font-family:'Inter',sans-serif;font-size:12px;padding:8px 4px;}
+.map-legend{padding:16px;overflow-y:auto;max-height:340px;border-top:1px solid var(--border);}
+@media(min-width:640px){.map-legend{border-top:none;border-left:1px solid var(--border);}}
+.ml-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t2);margin-bottom:12px;}
+.ml-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.ml-item:last-child{border-bottom:none}
+.ml-left{display:flex;align-items:center;gap:8px;}
+.ml-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.ml-name{font-size:11px;font-weight:600;color:var(--t1);line-height:1.3;}
+.ml-sub{font-size:9px;color:var(--t2)}
+.ml-val{font-family:'Montserrat',sans-serif;font-size:14px;font-weight:900;color:var(--ga2);}
+/* PAÍSES */
+.pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
+@media(min-width:480px){.pgrid{grid-template-columns:repeat(3,1fr)}}
+.pc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 12px;display:flex;align-items:center;gap:10px;}
+.pc-flag{font-size:24px;flex-shrink:0}
+.pc-info{flex:1;min-width:0}
+.pc-name{font-size:11px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pc-sub{font-size:9px;color:var(--t2);margin-top:2px}
+.pc-val{font-family:'Montserrat',sans-serif;font-size:20px;font-weight:900;color:var(--ga2);}
+/* TABELA */
+.tc{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:36px;}
+.th2{padding:16px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.tt{font-size:13px;font-weight:700}
+.ts{font-size:10px;color:var(--t2);margin-top:2px}
+.tw{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;min-width:540px;border-collapse:collapse}
+thead th{padding:10px 12px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t2);text-align:left;background:rgba(227,116,0,.04);border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(227,116,0,.05)}
+tbody td{padding:9px 12px;font-size:11px;font-weight:500;vertical-align:middle;white-space:nowrap;}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;}
+.tag-o{background:rgba(227,116,0,.15);color:var(--ga2)}
+.tag-b{background:rgba(58,134,255,.15);color:var(--blue)}
+.tag-g{background:rgba(0,229,160,.15);color:var(--green)}
+.tag-p{background:rgba(168,85,247,.15);color:var(--purple)}
+/* FOOTER */
+.footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-top:20px;border-top:1px solid var(--border);}
+.fl{font-size:10px;color:var(--t2);line-height:1.8}
+.fl strong{color:var(--ga2)}
+.fbadge{background:rgba(227,116,0,.1);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:9px;font-weight:600;color:var(--ta);letter-spacing:1px;text-transform:uppercase;}
+/* TABS */
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.tab{padding:7px 16px;border-radius:100px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--t2);transition:all .2s;}
+.tab.active,.tab:hover{background:rgba(227,116,0,.12);border-color:var(--borderg);color:var(--ta);}
+@media(min-width:640px){body{padding:24px 20px 60px} .mc{padding:20px 18px;border-radius:18px} .cc{padding:22px 22px 18px;border-radius:18px;margin-bottom:16px} .kgrid{gap:12px;margin-bottom:22px} .tc{border-radius:18px;margin-bottom:40px} #mapid{height:380px}}
+@media(min-width:1024px){body{padding:40px 20px 60px} .header{margin-bottom:40px} #mapid{height:420px}}
+</style>
+</head>
+<body>
+
+<div id="ls">
+  <div class="spin"></div>
+  <div class="lt">Carregando dados — Mareias Villas GA4...</div>
+</div>
+
+<div class="dash" id="dash" style="display:none">
+
+  <header class="header">
+    <div class="hleft">
+      <div class="ga-icon">
+        <svg viewBox="0 0 40 40" fill="none">
+          <rect x="5" y="22" width="8" height="13" rx="2" fill="white" opacity="0.7"/>
+          <rect x="16" y="13" width="8" height="22" rx="2" fill="white" opacity="0.85"/>
+          <rect x="27" y="4" width="8" height="31" rx="2" fill="white"/>
+        </svg>
+      </div>
+      <div>
+        <div class="htitle">Mareias <span>Villas</span></div>
+        <div class="hsub">Google Analytics 4 &middot; Relatório do Site</div>
+      </div>
+    </div>
+    <div class="hright">
+      <div class="lbadge"><div class="ldot"></div>Atualização Automática</div>
+      <div class="dinfo">Período: <span id="dateRange">—</span></div>
+    </div>
+  </header>
+
+  <!-- KPIs -->
+  <div class="slbl">Indicadores Principais</div>
+  <div class="kgrid">
+    <div class="mc mc-a">
+      <div class="mlbl">👤 Usuários Ativos</div>
+      <div class="mval" id="k1">—</div>
+      <div class="msub">Total do período</div>
+      <div class="mbadge ba">GA4</div>
+    </div>
+    <div class="mc mc-b">
+      <div class="mlbl">🔁 Sessões</div>
+      <div class="mval" id="k2">—</div>
+      <div class="msub">Total de sessões</div>
+      <div class="mbadge bb">Período</div>
+    </div>
+    <div class="mc mc-g">
+      <div class="mlbl">🆕 Novos Usuários</div>
+      <div class="mval" id="k3">—</div>
+      <div class="msub">Primeiro acesso</div>
+      <div class="mbadge bg">Período</div>
+    </div>
+    <div class="mc mc-p">
+      <div class="mlbl">📄 Page Views</div>
+      <div class="mval" id="k4">—</div>
+      <div class="msub">Páginas visualizadas</div>
+      <div class="mbadge bp">Total</div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO 1 -->
+  <div class="slbl">Tráfego por Dia</div>
+  <div class="cc">
+    <div class="ch">
+      <div class="ct">Usuários Ativos, Sessões e Novos Usuários<small>Evolução diária — agregado por data</small></div>
+      <div class="lgrow">
+        <div class="lgi"><div class="lgd" style="background:#E37400"></div>Usuários</div>
+        <div class="lgi"><div class="lgd" style="background:#3a86ff"></div>Sessões</div>
+        <div class="lgi"><div class="lgd" style="background:#00e5a0"></div>Novos</div>
+      </div>
+    </div>
+    <canvas id="c1"></canvas>
+  </div>
+
+  <!-- GRÁFICO 2 -->
+  <div class="slbl">Page Views por Dia</div>
+  <div class="cc">
+    <div class="ch">
+      <div class="ct">Visualizações de Página<small>Páginas acessadas por dia</small></div>
+      <div class="lgrow">
+        <div class="lgi"><div class="lgd" style="background:#a855f7"></div>Page Views</div>
+      </div>
+    </div>
+    <canvas id="c2"></canvas>
+  </div>
+
+  <!-- MAPA -->
+  <div class="slbl">Mapa de Visitantes por Localização</div>
+  <div class="map-wrap">
+    <div class="map-header">
+      <div class="ct">🌍 De onde vêm seus visitantes<small>Cidades, estados e países — tamanho do ponto proporcional ao número de usuários</small></div>
+    </div>
+    <div class="map-body">
+      <div id="mapid"></div>
+      <div class="map-legend">
+        <div class="ml-title">🏙️ Top Cidades</div>
+        <div id="cityList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAÍSES -->
+  <div class="slbl">Usuários por País</div>
+  <div class="pgrid" id="countryGrid"></div>
+
+  <!-- TABELA GEO -->
+  <div class="slbl">Detalhamento por Cidade</div>
+  <div class="tc">
+    <div class="th2">
+      <div>
+        <div class="tt">Dados por Data e Cidade</div>
+        <div class="ts">Google Analytics 4 · city · region · country</div>
+      </div>
+      <div class="lbadge" style="font-size:9px"><div class="ldot"></div>Geo</div>
+    </div>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Cidade</th>
+            <th>Estado / Região</th>
+            <th>País</th>
+            <th>Usuários</th>
+            <th>Sessões</th>
+            <th>Novos</th>
+            <th>Page Views</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="fl">
+      <strong>Mareias Villas</strong> · Google Analytics 4<br>
+      <span id="fp">—</span> · Atualizado via Google Sheets
+    </div>
+    <div class="fbadge">GA4 Dashboard v2</div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  NOVA URL — Apps Script com city/region/country
+// ══════════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbz7W0UsBsYeMwMkcOMgGLzEfgCCkIG3IKGHywSuv3AWJAWZnR6Bp8huzdj-n6lqaHuHaQ/exec';
+
+// ── Coordenadas estáticas das cidades ─────────────────
+const COORDS = {
+  'Natal':[-5.7945,-35.2110],'Sao Paulo':[-23.5505,-46.6333],
+  'Salvador':[-12.9714,-38.5014],'Curitiba':[-25.4284,-49.2733],
+  'Sao Jose':[-27.5954,-48.5480],'Rio de Janeiro':[-22.9068,-43.1729],
+  'Belo Horizonte':[-19.9167,-43.9345],'Recife':[-8.0476,-34.8770],
+  'Fortaleza':[-3.7172,-38.5434],'Manaus':[-3.1190,-60.0217],
+  'Brasilia':[-15.7801,-47.9292],'Porto Alegre':[-30.0346,-51.2177],
+  'Goiania':[-16.6869,-49.2648],'Campinas':[-22.9099,-47.0626],
+  'Maceio':[-9.6658,-35.7350],'Joao Pessoa':[-7.1195,-34.8450],
+  'Florianopolis':[-27.5954,-48.5480],'Vitoria':[-20.3155,-40.3128],
+  'Teresina':[-5.0920,-42.8038],'Sao Luis':[-2.5297,-44.3028],
+  'Aracaju':[-10.9472,-37.0731],'Porto Velho':[-8.7612,-63.9004],
+  'Ashburn':[39.0438,-77.4874],'Council Bluffs':[41.2619,-95.8608],
+  'New York':[40.7128,-74.0060],'Los Angeles':[34.0522,-118.2437],
+  'Miami':[25.7617,-80.1918],'Chicago':[41.8781,-87.6298],
+  'La Paz':[-16.4897,-68.1193],'Santa Cruz':[-17.7833,-63.1821],
+  'Buenos Aires':[-34.6037,-58.3816],'Lisboa':[38.7169,-9.1395],
+  'Porto':[41.1579,-8.6291],'London':[51.5074,-0.1278],
+  'Paris':[48.8566,2.3522],'Berlin':[52.5200,13.4050],
+};
+
+const FLAGS = {
+  'Brazil':'🇧🇷','United States':'🇺🇸','Bolivia':'🇧🇴',
+  'Argentina':'🇦🇷','Portugal':'🇵🇹','Spain':'🇪🇸',
+  'Germany':'🇩🇪','France':'🇫🇷','Italy':'🇮🇹',
+  'United Kingdom':'🇬🇧','(not set)':'🌐'
+};
+const COLORS = ['#E37400','#3a86ff','#00e5a0','#a855f7','#f5c518','#ff4d6a','#06d6a0','#ff9f1c','#e63946','#457b9d','#2ec4b6','#cbf3f0'];
+
+function fmt(n){ return (!n||isNaN(+n)) ? '0' : Number(n).toLocaleString('pt-BR'); }
+function fmtDate(d){
+  if(!d) return '—';
+  const p=String(d).split('-');
+  return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d;
+}
+function fmtShort(d){
+  if(!d) return '—';
+  const p=String(d).split('-');
+  return p.length===3?p[2]+'/'+p[1]:d;
+}
+function showErr(m,d){
+  document.getElementById('ls').innerHTML=`<div class="err"><div class="ei">⚠️</div><h3>${m}</h3><p>${d||''}</p><button class="retry" onclick="fetchData()">Tentar novamente</button></div>`;
+}
+function resolveCoord(city){
+  if(!city||city==='(not set)') return null;
+  // tenta direto
+  if(COORDS[city]) return COORDS[city];
+  // normaliza acentos
+  const norm = city.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(COORDS[norm]) return COORDS[norm];
+  return null;
+}
+
+let ch1=null,ch2=null,leafMap=null;
+
+function render(rows,totals){
+  document.getElementById('ls').style.display='none';
+  document.getElementById('dash').style.display='block';
+  if(!rows||!rows.length){ showErr('Nenhum dado encontrado.','Verifique a planilha e o Apps Script.'); return; }
+
+  // ordena por data
+  rows.sort((a,b)=>a.date.localeCompare(b.date));
+
+  const tot = totals||{};
+  const tU = tot.activeUsers     || rows.reduce((s,r)=>s+r.activeUsers,0);
+  const tS = tot.sessions        || rows.reduce((s,r)=>s+r.sessions,0);
+  const tN = tot.newUsers        || rows.reduce((s,r)=>s+r.newUsers,0);
+  const tV = tot.screenPageViews || rows.reduce((s,r)=>s+r.screenPageViews,0);
+
+  const d1=fmtDate(rows[0].date), d2=fmtDate(rows[rows.length-1].date);
+  document.getElementById('dateRange').textContent=d1+' — '+d2;
+  document.getElementById('fp').textContent=d1+' a '+d2;
+  document.getElementById('k1').textContent=fmt(tU);
+  document.getElementById('k2').textContent=fmt(tS);
+  document.getElementById('k3').textContent=fmt(tN);
+  document.getElementById('k4').textContent=fmt(tV);
+
+  // ── Agrega por data ──────────────────────────────────────
+  const byDate={};
+  rows.forEach(r=>{
+    if(!byDate[r.date]) byDate[r.date]={date:r.date,u:0,s:0,n:0,v:0};
+    byDate[r.date].u+=r.activeUsers;
+    byDate[r.date].s+=r.sessions;
+    byDate[r.date].n+=r.newUsers;
+    byDate[r.date].v+=r.screenPageViews;
+  });
+  const daily=Object.values(byDate).sort((a,b)=>a.date.localeCompare(b.date));
+  const labels=daily.map(r=>fmtShort(r.date));
+
+  // ── Agrega por cidade ─────────────────────────────────────
+  const byCity={};
+  rows.forEach(r=>{
+    const c=(r.city&&r.city!=='(not set)')?r.city:null;
+    if(!c) return;
+    if(!byCity[c]) byCity[c]={city:c,region:r.region||'',country:r.country||'',u:0,s:0,n:0,v:0};
+    byCity[c].u+=r.activeUsers;
+    byCity[c].s+=r.sessions;
+    byCity[c].n+=r.newUsers;
+    byCity[c].v+=r.screenPageViews;
+  });
+  const cities=Object.values(byCity).sort((a,b)=>b.u-a.u);
+
+  // ── Agrega por país ───────────────────────────────────────
+  const byCountry={};
+  rows.forEach(r=>{
+    const c=(r.country&&r.country!=='(not set)')?r.country:'Outros';
+    if(!byCountry[c]) byCountry[c]={country:c,u:0,s:0};
+    byCountry[c].u+=r.activeUsers;
+    byCountry[c].s+=r.sessions;
+  });
+  const countries=Object.values(byCountry).sort((a,b)=>b.u-a.u);
+
+  const isMob=window.innerWidth<600;
+  const TT={backgroundColor:'rgba(10,14,26,.95)',borderColor:'rgba(227,116,0,.3)',borderWidth:1,titleColor:'#8892a4',bodyColor:'#fff',padding:10};
+
+  // ── Gráfico 1 — Usuários + Sessões + Novos ───────────────
+  if(ch1) ch1.destroy();
+  ch1=new Chart(document.getElementById('c1'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Usuários',data:daily.map(r=>r.u),backgroundColor:'rgba(227,116,0,.75)',borderColor:'#E37400',borderWidth:1,borderRadius:4,yAxisID:'y'},
+      {label:'Sessões',type:'line',data:daily.map(r=>r.s),borderColor:'#3a86ff',backgroundColor:'rgba(58,134,255,.08)',borderWidth:2,tension:.4,fill:true,pointRadius:isMob?2:3,pointBackgroundColor:'#3a86ff',yAxisID:'y'},
+      {label:'Novos',type:'line',data:daily.map(r=>r.n),borderColor:'#00e5a0',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],tension:.4,pointRadius:isMob?2:3,pointBackgroundColor:'#00e5a0',yAxisID:'y'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},tooltip:{...TT}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#546e8a',font:{size:isMob?9:10},maxRotation:45,maxTicksLimit:isMob?8:15}},
+        y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#546e8a',font:{size:isMob?9:10}}}
+      }
+    }
+  });
+
+  // ── Gráfico 2 — Page Views ────────────────────────────────
+  if(ch2) ch2.destroy();
+  ch2=new Chart(document.getElementById('c2'),{
+    type:'bar',
+    data:{labels,datasets:[{
+      label:'Page Views',data:daily.map(r=>r.v),
+      backgroundColor:'rgba(168,85,247,.7)',borderColor:'#a855f7',borderWidth:1,borderRadius:4
+    }]},
+    options:{responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>' Page Views: '+fmt(c.raw)}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#546e8a',font:{size:isMob?9:10},maxRotation:45,maxTicksLimit:isMob?8:15}},
+        y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#a855f7',font:{size:isMob?9:10}}}
+      }
+    }
+  });
+
+  // ── MAPA LEAFLET ──────────────────────────────────────────
+  if(leafMap){leafMap.remove();leafMap=null;}
+  leafMap=L.map('mapid',{zoomControl:true,scrollWheelZoom:false}).setView([-15,-50],4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap',maxZoom:18
+  }).addTo(leafMap);
+
+  const maxU=cities[0]?.u||1;
+  const bounds=[];
+
+  cities.forEach((c,i)=>{
+    const coord=resolveCoord(c.city);
+    if(!coord) return;
+    bounds.push(coord);
+    const r=8+Math.round((c.u/maxU)*28);
+    const color=COLORS[i%COLORS.length];
+    const regionLabel=(c.region&&c.region!=='(not set)')?'<br>📍 '+c.region:'';
+    L.circleMarker(coord,{
+      radius:r,fillColor:color,color:'rgba(0,0,0,.5)',
+      weight:2,opacity:1,fillOpacity:.8
+    })
+    .bindPopup(`
+      <div style="min-width:140px">
+        <div style="font-weight:700;color:${color};font-size:13px;margin-bottom:4px">${c.city}</div>
+        <div style="color:#8892a4;font-size:11px">${FLAGS[c.country]||'🌍'} ${c.country}${regionLabel}</div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px">
+          <div style="background:rgba(227,116,0,.12);border-radius:6px;padding:4px 6px;text-align:center">
+            <div style="font-size:9px;color:#8892a4">Usuários</div>
+            <div style="font-weight:700;color:#F9AB00">${c.u}</div>
+          </div>
+          <div style="background:rgba(58,134,255,.12);border-radius:6px;padding:4px 6px;text-align:center">
+            <div style="font-size:9px;color:#8892a4">Sessões</div>
+            <div style="font-weight:700;color:#3a86ff">${c.s}</div>
+          </div>
+          <div style="background:rgba(0,229,160,.12);border-radius:6px;padding:4px 6px;text-align:center">
+            <div style="font-size:9px;color:#8892a4">Novos</div>
+            <div style="font-weight:700;color:#00e5a0">${c.n}</div>
+          </div>
+          <div style="background:rgba(168,85,247,.12);border-radius:6px;padding:4px 6px;text-align:center">
+            <div style="font-size:9px;color:#8892a4">Views</div>
+            <div style="font-weight:700;color:#a855f7">${c.v}</div>
+          </div>
+        </div>
+      </div>`)
+    .addTo(leafMap);
+  });
+
+  if(bounds.length>1){
+    try{leafMap.fitBounds(bounds,{padding:[40,40]});}catch(e){}
+  }
+
+  // Legenda cidades
+  const cl=document.getElementById('cityList');
+  cl.innerHTML='';
+  cities.slice(0,12).forEach((c,i)=>{
+    const regionTxt=(c.region&&c.region!=='(not set)')?c.region:c.country;
+    cl.innerHTML+=`
+      <div class="ml-item">
+        <div class="ml-left">
+          <div class="ml-dot" style="background:${COLORS[i%COLORS.length]}"></div>
+          <div>
+            <div class="ml-name">${c.city}</div>
+            <div class="ml-sub">${FLAGS[c.country]||'🌍'} ${regionTxt} · ${c.s} sessões</div>
+          </div>
+        </div>
+        <div class="ml-val">${c.u}</div>
+      </div>`;
+  });
+
+  // Cards países
+  const cg=document.getElementById('countryGrid');
+  cg.innerHTML='';
+  countries.forEach(c=>{
+    cg.innerHTML+=`
+      <div class="pc">
+        <div class="pc-flag">${FLAGS[c.country]||'🌍'}</div>
+        <div class="pc-info">
+          <div class="pc-name">${c.country}</div>
+          <div class="pc-sub">${c.s} sessões</div>
+        </div>
+        <div class="pc-val">${c.u}</div>
+      </div>`;
+  });
+
+  // Tabela geo
+  const tb=document.getElementById('tbody');
+  tb.innerHTML='';
+  [...rows].sort((a,b)=>b.date.localeCompare(a.date)).forEach(r=>{
+    const city=(r.city&&r.city!=='(not set)')?r.city:'<span style="color:var(--t2)">—</span>';
+    const region=(r.region&&r.region!=='(not set)')?r.region:'<span style="color:var(--t2)">—</span>';
+    const ctry=(r.country&&r.country!=='(not set)')?r.country:'—';
+    tb.innerHTML+=`<tr>
+      <td style="color:var(--t2);font-size:10px">${fmtDate(r.date)}</td>
+      <td style="font-weight:600">${city}</td>
+      <td style="color:var(--t2);font-size:10px">${region}</td>
+      <td>${FLAGS[r.country]||'🌍'} ${ctry}</td>
+      <td><span class="tag tag-o">${fmt(r.activeUsers)}</span></td>
+      <td><span class="tag tag-b">${fmt(r.sessions)}</span></td>
+      <td><span class="tag tag-g">${fmt(r.newUsers)}</span></td>
+      <td><span class="tag tag-p">${fmt(r.screenPageViews)}</span></td>
+    </tr>`;
+  });
+}
+
+// ── JSONP ─────────────────────────────────────────────
+function fetchData(){
+  const ls=document.getElementById('ls');
+  ls.style.display='flex';
+  ls.innerHTML='<div class="spin"></div><div class="lt">Carregando dados — Mareias Villas GA4...</div>';
+  document.getElementById('dash').style.display='none';
+
+  const old=document.getElementById('_cb'); if(old) old.remove();
+  if(window.__ga4) delete window.__ga4;
+
+  const timer=setTimeout(()=>showErr('Tempo esgotado.','Verifique se o Apps Script está publicado com acesso "Qualquer pessoa".'),15000);
+
+  window.__ga4=function(json){
+    clearTimeout(timer);
+    try{ render(json.data||[],json.totals||null); }
+    catch(e){ showErr('Erro ao processar dados.',e.message); }
+  };
+
+  const s=document.createElement('script');
+  s.id='_cb';
+  s.src=API_URL+'?callback=__ga4&t='+Date.now();
+  s.onerror=()=>{ clearTimeout(timer); showErr('Não foi possível conectar ao Apps Script.','Verifique a implantação.'); };
+  document.body.appendChild(s);
+}
+
+fetchData();
+setInterval(fetchData,5*60*1000);
+</script>
+</body>
+</html>
